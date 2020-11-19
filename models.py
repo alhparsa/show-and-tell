@@ -10,10 +10,10 @@ class CNN(nn.Module):
     def __init__(self, output_dim=1000):
         super(CNN, self).__init__()
         # TODO: change with resnet152?
-        self.model = models.googlenet(pretrained=True)
+        self.pre_trained = models.googlenet(pretrained=True)
 
     def forward(self, x):
-        return self.model(x)
+        return self.pre_trained(x)
 
 
 class RNN(torch.nn.Module):
