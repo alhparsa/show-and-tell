@@ -10,24 +10,10 @@ class CNN(nn.Module):
     def __init__(self, output_dim=1000):
         super(CNN, self).__init__()
         # TODO: change with resnet152?
-        pretrained_model = models.resnet34(pretrained=True)
-        self.resnet = Sequential(*list(pretrained_model.children())[:-1])
-        self.linear = nn.Linear(pretrained_model.fc.in_features, output_dim)
-        self.batchnorm = nn.BatchNorm1d(output_dim, momentum=0.01)
-        self.init_weights()
-
-    def init_weights(self):
-        # weight init, inspired by tutorial
-        self.linear.weight.data.normal_(0,0.02)
-        self.linear.bias.data.fill_(0)
+        self.model = models.googlenet(pretrained=True)
 
     def forward(self, x):
-        x = self.resnet(x)
-        x = Variable(x.data)
-        x = x.view(x.size(0), -1) # flatten
-        x = self.linear(x)
-
-        return x
+        return self.model(x)
 
 
 class RNN(torch.nn.Module):
@@ -52,8 +38,8 @@ class RNN(torch.nn.Module):
         assert rec_unit in RNN.__rec_units, 'Specified recurrent unit is not available'
 
         super(RNN, self).__init__()
-        self.embeddings = nn.Embedding(vocab_size, emb_size)
-        self.unit = RNN.__rec_units[rec_unit](emb_size, hidden_size, num_layers,
+        self.embeddings = nn.Embedding(vocab_size, 1000)
+        self.unit = RNN.__rec_units[rec_unit](1000, hidden_size, num_layers,
                                                  batch_first=True)
         self.linear = nn.Linear(hidden_size, vocab_size)
 
