@@ -5,8 +5,10 @@ from torchvision import models
 from torch.autograd import Variable
 from torch.nn.utils.rnn import pack_padded_sequence
 
+
 class CNN(nn.Module):
     """Class to build new model including all but last layers"""
+
     def __init__(self, output_dim=1000):
         super(CNN, self).__init__()
         # TODO: change with resnet152?
@@ -22,7 +24,7 @@ class RNN(torch.nn.Module):
     To be used as part of an Encoder-Decoder network for Image Captioning.
     """
     __rec_units = {
-        'elman': nn.RNN, 'gru': nn.GRU, 'lstm': nn.LSTM }
+        'elman': nn.RNN, 'gru': nn.GRU, 'lstm': nn.LSTM}
 
     def __init__(self, emb_size, hidden_size, vocab_size, num_layers=1, rec_unit='gru'):
         """
@@ -40,7 +42,7 @@ class RNN(torch.nn.Module):
         super(RNN, self).__init__()
         self.embeddings = nn.Embedding(vocab_size, 1000)
         self.unit = RNN.__rec_units[rec_unit](1000, hidden_size, num_layers,
-                                                 batch_first=True)
+                                              batch_first=True)
         self.linear = nn.Linear(hidden_size, vocab_size)
 
     def forward(self, features, captions, lengths):
