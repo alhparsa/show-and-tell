@@ -15,12 +15,15 @@ class CNN(nn.Module):
         super(CNN, self).__init__()
         self.pre_trained = models.detection.fasterrcnn_resnet50_fpn(
             pretrained=True)
+        for param in self.pre_trained.parameters():
+            param.requires_grad = False
+        self.pre_trained.eval()
         self.linear = nn.Linear(91, output_dim)
         self.batchnorm = nn.BatchNorm1d(output_dim)
 
     def forward(self, x):
-        self.pre_trained.eval()
-        x_ = self.pre_trained(x)
+        with torch.no_grad():
+            x_ = self.pre_trained(x)
         s = torch.zeros(x.shape[0], 91)
         for b in range(x.shape[0]):
             labels, scores = x_[b]['labels'], x_[b]['scores']
