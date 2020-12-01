@@ -1,9 +1,11 @@
 import torch
+
 from torch import nn
 from torch.nn import Sequential
 from torchvision import models
 from torch.autograd import Variable
 from torch.nn.utils.rnn import pack_padded_sequence
+from torchvision.models.detection import FasterRCNN
 
 
 class CNN(nn.Module):
@@ -11,11 +13,21 @@ class CNN(nn.Module):
 
     def __init__(self, output_dim=1000):
         super(CNN, self).__init__()
-        # TODO: change with resnet152?
-        self.pre_trained = models.googlenet(pretrained=True)
+        self.pre_trained = models.detection.fasterrcnn_resnet50_fpn(
+            pretrained=True)
+        self.linear = nn.Linear(91, output_dim)
+        self.batchnorm = nn.BatchNorm1d(output_dim)
 
     def forward(self, x):
-        return self.pre_trained(x)
+        self.pre_trained.eval()
+        x_ = self.pre_trained(x)
+        s = torch.zeros(x.shape[0], 91)
+        for b in range(x.shape[0]):
+            labels, scores = x_[b]['labels'], x_[b]['scores']
+            for i, l in enumerate(labels):
+                s[b][l] += float(scores[i])
+        out = torch.relu(self.batchnorm(self.linear(s.cuda())))
+        return out
 
 
 class RNN(torch.nn.Module):
