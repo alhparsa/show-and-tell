@@ -11,25 +11,31 @@ from torchvision.models.detection import FasterRCNN
 class CNN(nn.Module):
     """Class to build new model including all but last layers"""
 
-    def __init__(self, output_dim=1000):
+    def __init__(self, output_dim=1000, rcnn=True):
         super(CNN, self).__init__()
-        self.pre_trained = models.detection.fasterrcnn_resnet50_fpn(
-            pretrained=True)
+        if rcnn:
+            self.pre_trained = models.detection.fasterrcnn_resnet50_fpn(
+                pretrained=True)
+        else:
+            self.pre_trained = models.resnet152(True)
         for param in self.pre_trained.parameters():
             param.requires_grad = False
+        self.rcnn = rcnn
         self.pre_trained.eval()
-        self.linear = nn.Linear(91, output_dim)
-        self.batchnorm = nn.BatchNorm1d(output_dim)
+        if rcnn:
+            self.linear = nn.Linear(91, output_dim)
+            self.batchnorm = nn.BatchNorm1d(output_dim)
 
     def forward(self, x):
         with torch.no_grad():
-            x_ = self.pre_trained(x)
-        s = torch.zeros(x.shape[0], 91)
-        for b in range(x.shape[0]):
-            labels, scores = x_[b]['labels'], x_[b]['scores']
-            for i, l in enumerate(labels):
-                s[b][l] += float(scores[i])
-        out = torch.relu(self.batchnorm(self.linear(s.cuda())))
+            out = self.pre_trained(x)
+        if self.rcnn:
+            s = torch.zeros(x.shape[0], 91)
+            for b in range(x.shape[0]):
+                labels, scores = out[b]['labels'], out[b]['scores']
+                for i, l in enumerate(labels):
+                    s[b][l] += float(scores[i])
+            out = torch.relu(self.batchnorm(self.linear(out.cuda())))
         return out
 
 
@@ -55,8 +61,8 @@ class RNN(torch.nn.Module):
         assert rec_unit in RNN.__rec_units, 'Specified recurrent unit is not available'
 
         super(RNN, self).__init__()
-        self.embeddings = nn.Embedding(vocab_size, 1000)
-        self.unit = RNN.__rec_units[rec_unit](1000, hidden_size, num_layers,
+        self.embeddings = nn.Embedding(vocab_size, emb_size)
+        self.unit = RNN.__rec_units[rec_unit](emb_size, hidden_size, num_layers,
                                               batch_first=True)
         self.linear = nn.Linear(hidden_size, vocab_size)
 
