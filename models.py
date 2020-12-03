@@ -73,7 +73,7 @@ class RNN_show_attend_tell(nn.Module):
         self.deep_output = nn.Linear(hidden_size, vocabulary_size)
         self.dropout = nn.Dropout()
 
-        self.attention = Attention(encoder_dim)
+        self.attention = Attention(encoder_dim, hidden_size)
         self.embedding = nn.Embedding(vocabulary_size, hidden_size)
         self.lstm = nn.LSTMCell(hidden_size + encoder_dim, hidden_size)
 
@@ -95,12 +95,9 @@ class RNN_show_attend_tell(nn.Module):
             gate = self.sigmoid(self.f_beta(h))
             gated_context = gate * context
 
-            if self.training:
-                lstm_input = torch.cat((embedding[:, t], gated_context), dim=1)
-            else:
-                embedding = embedding.squeeze(
-                    1) if embedding.dim() == 3 else embedding
-                lstm_input = torch.cat((embedding, gated_context), dim=1)
+            embedding = embedding.squeeze(
+                1) if embedding.dim() == 3 else embedding
+            lstm_input = torch.cat((embedding, gated_context), dim=1)
 
             h, c = self.lstm(lstm_input, (h, c))
             output = self.deep_output(self.dropout(h))
