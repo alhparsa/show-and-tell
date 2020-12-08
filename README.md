@@ -32,6 +32,8 @@ show-and-tell/
 All of our trained weights are available to be download from the following link:
 https://drive.google.com/drive/folders/16GKgOIUhUUr7z7gP8RFThPeWjEuzN0oX?usp=sharing
 
+Make sure the number of layers match for Show and Tell. For Show attend and tell you can just use the default parameters.
+
 ## Setting up
 Once you are done with unzipping, make sure you have `nltk` library installed and have the tokenizer `punkt` downloaded if not, use the following code in python to download the tokenizer:
 
