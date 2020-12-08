@@ -169,6 +169,11 @@ if __name__ == '__main__':
     parser.add_argument('--with_attention', type=bool,
                         default=True, help='Show tell and attend implementation')
     parser.add_argument('--log_step', type=int,
-                    default=100, help='Log the training loss after specified steps')      
+                    default=100, help='Log the training loss after specified steps')
+    parser.add_argument('--lr', type=float,
+                    default=1e-3, help='learning rate')     
+    parser.add_argument('--epochs', type=int,
+                    default=20, help='Number of epochs')      
+      
     args = parser.parse_args()
     main(args)

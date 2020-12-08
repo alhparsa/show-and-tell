@@ -9,7 +9,7 @@ from torchvision import transforms
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.nn as nn
-from torch import np
+import numpy as np
 import utils
 import torch
 import os
