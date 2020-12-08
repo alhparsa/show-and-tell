@@ -124,3 +124,5 @@ cocoapi
 
 # default directory to store checkpoints
 checkpoints
+coco-caption-master/pycocoevalcap/spice/tmp/*
+coco-caption-master/pycocoevalcap/spice/cache/*

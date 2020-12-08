@@ -1,3 +1,4 @@
+from data_loader import get_coco_data_loader, get_basic_loader
 from models import CNN_show_attend_tell, RNN_show_attend_tell
 from torchvision import datasets, models, transforms
 from torch.nn.utils.rnn import pack_padded_sequence
@@ -16,6 +17,9 @@ import os
 
 
 def main(args):
+    """
+    Modified version of Muggin's Show and Tell `train.py` function.
+    """
     # hyperparameters
     batch_size = args.batch_size
     num_workers = 2
@@ -56,19 +60,19 @@ def main(args):
     losses_train = []
 
     # Build the models
-    ngpu = 1
     initial_step = initial_epoch = 0
     embed_size = args.embed_size
     num_hiddens = args.num_hidden
-    learning_rate = 1e-3
-    num_epochs = 20
-    save_step = 100
+    learning_rate = args.lr
+    num_epochs = args.epochs
     checkpoint_dir = args.checkpoint_dir
-
+    log_step = args.log_step
     if args.with_attention:
         encoder = CNN_show_attend_tell()
-        decoder = RNN_show_attend_tell(vocabulary_size=len(
-            vocab), hidden_size=num_hiddens, encoder_dim=2048)
+        decoder = RNN_show_attend_tell(attention_dim=args.num_hidden,
+                                       embed_dim=args.num_hidden,
+                                       decoder_dim=args.num_hidden,
+                                       vocab_size=len(vocab))
     else:
         encoder = CNN_show_tell(rcnn=False)
         decoder = RNN_show_tell(embed_size, num_hiddens, len(
@@ -78,10 +82,9 @@ def main(args):
     criterion = nn.CrossEntropyLoss()
 
     if args.checkpoint_file:
-        encoder_state_dict, decoder_state_dict, optimizer, * \
-            meta = utils.load_models(args.checkpoint_file, args.sample)
+        _, decoder_state_dict, optimizer, * \
+            meta = utils.load_models(args.checkpoint_file)
         initial_step, initial_epoch, losses_train, losses_val = meta
-        encoder.load_state_dict(encoder_state_dict)
         decoder.load_state_dict(decoder_state_dict)
     else:
         params = list(decoder.parameters())
@@ -104,31 +107,27 @@ def main(args):
                 captions = utils.to_var(captions)
 
                 # Forward, Backward and Optimize
-                decoder.zero_grad()
-                encoder.zero_grad()
+                optimizer.zero_grad()
 
                 # run on single GPU
                 with torch.no_grad():
                     features = encoder(images)
                 if args.with_attention:
-                    preds, _ = decoder(features, captions)
-                    targets = captions[:, 1:]
-                    targets = pack_padded_sequence(
-                        targets, [len(tar) - 1 for tar in targets], batch_first=True)[0]
-                    outputs = pack_padded_sequence(
-                        preds, [len(pred) - 1 for pred in preds], batch_first=True)[0]
+                    scores, caps_sorted, decode_lengths, alphas = decoder(features, captions, torch.tensor(lengths).cuda())
+                    targets = caps_sorted[:, 1:]
+                    outputs = pack_padded_sequence(scores, decode_lengths, batch_first=True)[0]
+                    targets = pack_padded_sequence(targets, decode_lengths, batch_first=True)[0]
                 else:
                     outputs = decoder(features, captions, lengths)
                     targets = pack_padded_sequence(
                         captions, lengths, batch_first=True)[0]
-
                 train_loss = criterion(outputs, targets)
                 losses_train.append(float(train_loss.cpu()))
                 tmp_train_loss.append(float(train_loss.cpu()))
                 train_loss.backward()
                 optimizer.step()
                 # Save the models
-                if (step+1) % save_step == 0:
+                if (step+1) % log_step == 0:
                     print('Step: {} - Train Loss: {}'.format(step,
                                                              np.mean(tmp_train_loss)))
                     tmp_train_loss = []
@@ -150,27 +149,26 @@ def main(args):
         utils.dump_losses(losses_train, losses_val,
                           os.path.join(checkpoint_dir, 'losses.pkl'))
 
-
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--checkpoint_file', type=str,
-                        default=None, help='path to saved checkpoint')
+        default=None, help='path to saved checkpoint')
     parser.add_argument('--checkpoint_dir', type=str,
-                        default='checkpoints', help='directory to save checkpoints')
+        default='./', help='directory to save checkpoints')
     parser.add_argument('--batch_size', type=int,
-                        default=128, help='size of batches')
+        default=256, help='size of batches')
     parser.add_argument('--rec_unit', type=str,
-                        default='gru', help='choose "gru", "lstm" or "elman"')
-    parser.add_argument('--sample', default=False,
-                        action='store_true', help='just show result, requires --checkpoint_file')
-    parser.add_argument('--log_step', type=int,
-                        default=125, help='number of steps in between calculating loss')
+        default='lstm', help='choose "gru", "lstm" or "elman"')
+    parser.add_argument('--sample', default=False, 
+        action='store_true', help='just show result, requires --checkpoint_file')
     parser.add_argument('--num_hidden', type=int,
-                        default=512, help='number of hidden units in the RNN')
+        default=512, help='number of hidden units in the RNN')
     parser.add_argument('--embed_size', type=int,
-                        default=512, help='number of embeddings in the RNN')
+        default=1000, help='number of embeddings in the RNN')
     parser.add_argument('--with_attention', type=bool,
-                        default=False, help='Show tell and attend implementation')
+                        default=True, help='Show tell and attend implementation')
+    parser.add_argument('--log_step', type=int,
+                    default=100, help='Log the training loss after specified steps')      
     args = parser.parse_args()
     main(args)
